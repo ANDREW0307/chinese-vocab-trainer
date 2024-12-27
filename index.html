@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Vocabulary Flashcards</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .card {
+            width: 300px;
+            height: 200px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            perspective: 1000px;
+            position: relative;
+        }
+        .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: #f9f9f9;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .counter {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: #555;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:disabled {
+            background-color: #aaa;
+        }
+        #save-card-button {
+            margin-top: 10px;
+            background-color: #28a745;
+        }
+        .saved-cards-container {
+            width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            max-height: 90vh;
+            background: #fff;
+            padding: 10px;
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+        .saved-cards-title {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .saved-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .saved-card {
+            width: 100%;
+            height: 100px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+            position: relative;
+            cursor: pointer;
+        }
+        .saved-card .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .saved-card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .saved-card-front, .saved-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .saved-card-back {
+            transform: rotateY(180deg);
+            background-color: #f9f9f9;
+        }
+        .remove-card-button {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="card">
+            <div class="card-inner">
+                <div class="card-front" id="card-front">Apple</div>
+                <div class="card-back" id="card-back">
+                    苹果<br><span style="font-size: 1rem;">píngguǒ</span>
+                </div>
+            </div>
+        </div>
+
+        <button id="save-card-button" onclick="saveCard()">Save Card</button>
+
+        <div class="counter" id="counter">Word 1 of 303</div>
+
+        <div class="controls">
+            <button id="prev-btn" onclick="prevCard()">&#8592; Previous</button>
+            <button id="reverse-btn" onclick="reverseCards()">Flip Card</button>
+            <button id="random-btn" onclick="randomCard()">Random</button>
+            <button id="next-btn" onclick="nextCard()">Next &#8594;</button>
+        </div>
+    </div>
+
+    <div class="saved-cards-container" id="saved-cards">
+        <div class="saved-cards-title">Saved Cards</div>
+        <div class="saved-cards-grid" id="saved-cards-grid">
+            <!-- Saved cards will appear here -->
+        </div>
+    </div>
+
+    <script>
+        const cards = [
+        { english: "phone", chinese: "手机", pinyin: "shǒujī" },
+{ english: "computer", chinese: "电脑", pinyin: "diànnǎo" },
+{ english: "laptop", chinese: "笔记本电脑", pinyin: "bǐjìběn diànnǎo" },
+{ english: "tablet", chinese: "平板电脑", pinyin: "píngbǎn diànnǎo" },
+{ english: "earphones", chinese: "耳机", pinyin: "ěrjī" },
+{ english: "headphones", chinese: "头戴式耳机", pinyin: "tóudàishì ěrjī" },
+{ english: "charger", chinese: "充电器", pinyin: "chōngdiànqì" },
+{ english: "cable", chinese: "数据线", pinyin: "shùjùxiàn" },
+{ english: "USB flash drive", chinese: "U盘", pinyin: "U pán" },
+{ english: "mouse", chinese: "鼠标", pinyin: "shǔbiāo" },
+{ english: "keyboard", chinese: "键盘", pinyin: "jiànpán" },
+{ english: "printer", chinese: "打印机", pinyin: "dǎyìnjī" },
+{ english: "paper", chinese: "纸", pinyin: "zhǐ" },
+{ english: "pen", chinese: "笔", pinyin: "bǐ" },
+{ english: "pencil", chinese: "铅笔", pinyin: "qiānbǐ" },
+{ english: "marker", chinese: "记号笔", pinyin: "jìhàobǐ" },
+{ english: "highlighter", chinese: "荧光笔", pinyin: "yíngguāngbǐ" },
+{ english: "notebook", chinese: "笔记本", pinyin: "bǐjìběn" },
+{ english: "folder", chinese: "文件夹", pinyin: "wénjiànjiā" },
+{ english: "book", chinese: "书", pinyin: "shū" },
+{ english: "dictionary", chinese: "词典", pinyin: "cídiǎn" },
+{ english: "magazine", chinese: "杂志", pinyin: "zázhì" },
+{ english: "newspaper", chinese: "报纸", pinyin: "bàozhǐ" },
+{ english: "envelope", chinese: "信封", pinyin: "xìnfēng" },
+{ english: "stamp", chinese: "邮票", pinyin: "yóupiào" },
+{ english: "postcard", chinese: "明信片", pinyin: "míngxìnpiàn" },
+{ english: "letter", chinese: "信", pinyin: "xìn" },
+{ english: "wallet", chinese: "钱包", pinyin: "qiánbāo" },
+{ english: "purse/handbag", chinese: "手提包", pinyin: "shǒutíbāo" },
+{ english: "backpack", chinese: "背包", pinyin: "bèibāo" },
+{ english: "suitcase", chinese: "行李箱", pinyin: "xínglǐxiāng" },
+{ english: "key", chinese: "钥匙", pinyin: "yàoshi" },
+{ english: "keychain", chinese: "钥匙扣", pinyin: "yàoshikòu" },
+{ english: "lock", chinese: "锁", pinyin: "suǒ" },
+{ english: "watch", chinese: "手表", pinyin: "shǒubiǎo" },
+{ english: "clock", chinese: "钟", pinyin: "zhōng" },
+{ english: "alarm clock", chinese: "闹钟", pinyin: "nàozhōng" },
+{ english: "calendar", chinese: "日历", pinyin: "rìlì" },
+{ english: "lamp", chinese: "台灯", pinyin: "táidēng" },
+{ english: "light bulb", chinese: "灯泡", pinyin: "dēngpào" },
+{ english: "flashlight", chinese: "手电筒", pinyin: "shǒudiàntǒng" },
+{ english: "candle", chinese: "蜡烛", pinyin: "làzhú" },
+{ english: "match", chinese: "火柴", pinyin: "huǒchái" },
+{ english: "lighter", chinese: "打火机", pinyin: "dǎhuǒjī" },
+{ english: "glasses", chinese: "眼镜", pinyin: "yǎnjìng" },
+{ english: "sunglasses", chinese: "太阳镜", pinyin: "tàiyángjìng" },
+{ english: "lens (camera lens)", chinese: "镜头", pinyin: "jìngtóu" },
+{ english: "camera", chinese: "相机", pinyin: "xiàngjī" },
+{ english: "video camera", chinese: "摄像机", pinyin: "shèxiàngjī" },
+{ english: "tripod", chinese: "三脚架", pinyin: "sānjiǎojià" },
+{ english: "battery", chinese: "电池", pinyin: "diànchí" },
+{ english: "remote control", chinese: "遥控器", pinyin: "yáokòngqì" },
+{ english: "TV", chinese: "电视", pinyin: "diànshì" },
+{ english: "radio", chinese: "收音机", pinyin: "shōuyīnjī" },
+{ english: "microphone", chinese: "麦克风", pinyin: "màikèfēng" },
+{ english: "speaker (audio)", chinese: "音箱", pinyin: "yīnxiāng" },
+{ english: "phone case", chinese: "手机壳", pinyin: "shǒujīké" },
+{ english: "refrigerator", chinese: "冰箱", pinyin: "bīngxiāng" },
+{ english: "freezer", chinese: "冷冻柜", pinyin: "lěngdòngguì" },
+{ english: "oven", chinese: "烤箱", pinyin: "kǎoxiāng" },
+{ english: "stove", chinese: "炉子", pinyin: "lúzi" },
+{ english: "microwave", chinese: "微波炉", pinyin: "wēibōlú" },
+{ english: "toaster", chinese: "烤面包机", pinyin: "kǎomiànbāojī" },
+{ english: "kettle", chinese: "水壶", pinyin: "shuǐhú" },
+{ english: "pot", chinese: "锅", pinyin: "guō" },
+{ english: "pan", chinese: "平底锅", pinyin: "píngdǐguō" },
+{ english: "wok", chinese: "炒锅", pinyin: "chǎoguō" },
+{ english: "spoon", chinese: "勺子", pinyin: "sháozi" },
+{ english: "fork", chinese: "叉子", pinyin: "chāzi" },
+{ english: "knife", chinese: "刀", pinyin: "dāo" },
+{ english: "cutting board", chinese: "砧板", pinyin: "zhēnbǎn" },
+{ english: "dish", chinese: "碟子", pinyin: "diézi" },
+{ english: "plate", chinese: "盘子", pinyin: "pánzi" },
+{ english: "bowl", chinese: "碗", pinyin: "wǎn" },
+{ english: "chopsticks", chinese: "筷子", pinyin: "kuàizi" },
+{ english: "mug", chinese: "马克杯", pinyin: "mǎkèbēi" },
+{ english: "cup", chinese: "杯子", pinyin: "bēizi" },
+{ english: "thermos", chinese: "保温杯", pinyin: "bǎowēnbēi" },
+{ english: "water bottle", chinese: "水瓶", pinyin: "shuǐpíng" },
+{ english: "straw", chinese: "吸管", pinyin: "xīguǎn" },
+{ english: "napkin", chinese: "餐巾纸", pinyin: "cānjīnzhǐ" },
+{ english: "towel", chinese: "毛巾", pinyin: "máojīn" },
+{ english: "tissue", chinese: "纸巾", pinyin: "zhǐjīn" },
+{ english: "soap", chinese: "肥皂", pinyin: "féizào" },
+{ english: "shampoo", chinese: "洗发水", pinyin: "xǐfàshuǐ" },
+{ english: "conditioner", chinese: "护发素", pinyin: "hùfàsù" },
+{ english: "shower gel", chinese: "沐浴露", pinyin: "mùyùlù" },
+{ english: "toothbrush", chinese: "牙刷", pinyin: "yáshuā" },
+{ english: "toothpaste", chinese: "牙膏", pinyin: "yágāo" },
+{ english: "mouthwash", chinese: "漱口水", pinyin: "shùkǒushuǐ" },
+{ english: "comb", chinese: "梳子", pinyin: "shūzi" },
+{ english: "hairbrush", chinese: "发刷", pinyin: "fāshuā" },
+{ english: "hairdryer", chinese: "吹风机", pinyin: "chuīfēngjī" },
+{ english: "razor", chinese: "剃须刀", pinyin: "tìxūdāo" },
+{ english: "shaving cream", chinese: "剃须膏", pinyin: "tìxūgāo" },
+{ english: "deodorant", chinese: "除臭剂", pinyin: "chúchòujì" },
+{ english: "perfume", chinese: "香水", pinyin: "xiāngshuǐ" },
+{ english: "makeup", chinese: "化妆品", pinyin: "huàzhuāngpǐn" },
+{ english: "mirror", chinese: "镜子", pinyin: "jìngzi" },
+{ english: "scale", chinese: "秤", pinyin: "chèng" },
+{ english: "hamper (laundry basket)", chinese: "脏衣篮", pinyin: "zāngyīlán" },
+{ english: "washing machine", chinese: "洗衣机", pinyin: "xǐyījī" },
+{ english: "dryer", chinese: "烘干机", pinyin: "hōnggānjī" },
+{ english: "ironing board", chinese: "熨衣板", pinyin: "yùnyībǎn" },
+{ english: "iron", chinese: "熨斗", pinyin: "yùndǒu" },
+{ english: "vacuum cleaner", chinese: "吸尘器", pinyin: "xīchénqì" },
+{ english: "broom", chinese: "扫帚", pinyin: "sàozhou" },
+{ english: "dustpan", chinese: "簸箕", pinyin: "bòjī" },
+{ english: "mop", chinese: "拖把", pinyin: "tuōbǎ" },
+{ english: "bucket", chinese: "水桶", pinyin: "shuǐtǒng" },
+{ english: "trash can", chinese: "垃圾桶", pinyin: "lājītǒng" },
+{ english: "recycling bin", chinese: "回收箱", pinyin: "huíshōuxiāng" },
+{ english: "ladder", chinese: "梯子", pinyin: "tīzi" },
+{ english: "toolbox", chinese: "工具箱", pinyin: "gōngjùxiāng" },
+{ english: "hammer", chinese: "锤子", pinyin: "chuízi" },
+{ english: "screwdriver", chinese: "螺丝刀", pinyin: "luósīdāo" },
+{ english: "wrench", chinese: "扳手", pinyin: "bānshǒu" },
+{ english: "pliers", chinese: "钳子", pinyin: "qiánzi" },
+{ english: "saw", chinese: "锯子", pinyin: "jùzi" },
+{ english: "drill", chinese: "电钻", pinyin: "diànzuàn" },
+{ english: "nails", chinese: "钉子", pinyin: "dīngzi" },
+{ english: "screws", chinese: "螺丝", pinyin: "luósī" },
+{ english: "tape measure", chinese: "卷尺", pinyin: "juǎnchǐ" },
+{ english: "glue (liquid)", chinese: "胶水", pinyin: "jiāoshuǐ" },
+{ english: "tape (adhesive)", chinese: "胶带", pinyin: "jiāodài" },
+{ english: "power strip", chinese: "排插", pinyin: "páichā" },
+{ english: "extension cord", chinese: "插线板", pinyin: "chāxiànbǎn" },
+{ english: "vacuum storage bag", chinese: "真空袋", pinyin: "zhēnkōngdài" },
+{ english: "cleaning cloth (rag)", chinese: "抹布", pinyin: "mābù" },
+{ english: "scouring pad", chinese: "百洁布", pinyin: "bǎijiébù" },
+{ english: "dish soap", chinese: "洗洁精", pinyin: "xǐjiéjīng" },
+{ english: "sponge", chinese: "海绵", pinyin: "hǎimián" },
+{ english: "cleaning brush", chinese: "刷子", pinyin: "shuāzi" },
+{ english: "plunger", chinese: "马桶吸", pinyin: "mǎtǒngxī" },
+{ english: "toilet brush", chinese: "马桶刷", pinyin: "mǎtǒngshuā" },
+{ english: "toilet paper", chinese: "卫生纸", pinyin: "wèishēngzhǐ" },
+{ english: "air freshener", chinese: "空气清新剂", pinyin: "kōngqì qīngxīnjì" },
+{ english: "disinfectant", chinese: "消毒剂", pinyin: "xiāodújì" },
+{ english: "cleaning spray", chinese: "清洁喷雾", pinyin: "qīngjié pēnwù" },
+{ english: "bleach", chinese: "漂白剂", pinyin: "piǎobáijì" },
+{ english: "detergent", chinese: "洗涤剂", pinyin: "xǐdíjì" },
+{ english: "feather duster", chinese: "鸡毛掸子", pinyin: "jīmáodǎnzi" },
+{ english: "clothes hanger", chinese: "衣架", pinyin: "yījià" },
+{ english: "clothesline", chinese: "晾衣绳", pinyin: "liàngyīshéng" },
+{ english: "pillow", chinese: "枕头", pinyin: "zhěntou" },
+{ english: "pillowcase", chinese: "枕套", pinyin: "zhěntào" },
+{ english: "bedsheet", chinese: "床单", pinyin: "chuángdān" },
+{ english: "blanket", chinese: "毯子", pinyin: "tǎnzi" },
+{ english: "duvet", chinese: "被子", pinyin: "bèizi" },
+{ english: "quilt", chinese: "被褥", pinyin: "bèirù" },
+{ english: "mattress", chinese: "床垫", pinyin: "chuángdiàn" },
+{ english: "bed frame", chinese: "床架", pinyin: "chuángjià" },
+{ english: "nightstand", chinese: "床头柜", pinyin: "chuángtóuguì" },
+{ english: "wardrobe", chinese: "衣柜", pinyin: "yīguì" },
+{ english: "drawer", chinese: "抽屉", pinyin: "chōuti" },
+{ english: "dresser", chinese: "梳妆台", pinyin: "shūzhuāngtái" },
+{ english: "vanity mirror", chinese: "化妆镜", pinyin: "huàzhuāngjìng" },
+{ english: "curtain", chinese: "窗帘", pinyin: "chuānglián" },
+{ english: "curtain rod", chinese: "窗帘杆", pinyin: "chuāngliángān" },
+{ english: "window", chinese: "窗户", pinyin: "chuānghù" },
+{ english: "door", chinese: "门", pinyin: "mén" },
+{ english: "doorknob", chinese: "门把手", pinyin: "ménbǎshǒu" },
+{ english: "door lock", chinese: "门锁", pinyin: "ménsuǒ" },
+{ english: "floor", chinese: "地板", pinyin: "dìbǎn" },
+{ english: "ceiling", chinese: "天花板", pinyin: "tiānhuābǎn" },
+{ english: "wall", chinese: "墙", pinyin: "qiáng" },
+{ english: "painting", chinese: "画", pinyin: "huà" },
+{ english: "photograph", chinese: "照片", pinyin: "zhàopiàn" },
+{ english: "picture frame", chinese: "相框", pinyin: "xiāngkuāng" },
+{ english: "shelf", chinese: "架子", pinyin: "jiàzi" },
+{ english: "bookcase", chinese: "书柜", pinyin: "shūguì" },
+{ english: "sofa", chinese: "沙发", pinyin: "shāfā" },
+{ english: "cushion", chinese: "靠垫", pinyin: "kàodiàn" },
+{ english: "coffee table", chinese: "茶几", pinyin: "chájī" },
+{ english: "rug", chinese: "地毯", pinyin: "dìtǎn" },
+{ english: "floor lamp", chinese: "落地灯", pinyin: "luòdìdēng" },
+{ english: "stool", chinese: "凳子", pinyin: "dèngzi" },
+{ english: "dining table", chinese: "餐桌", pinyin: "cānzhuō" },
+{ english: "dining chair", chinese: "餐椅", pinyin: "cānyǐ" },
+{ english: "side table", chinese: "边桌", pinyin: "biānzhuō" },
+{ english: "desk", chinese: "书桌", pinyin: "shūzhuō" },
+{ english: "desk lamp", chinese: "书桌灯", pinyin: "shūzhuōdēng" },
+{ english: "office chair", chinese: "办公椅", pinyin: "bàngōngyǐ" },
+{ english: "filing cabinet", chinese: "文件柜", pinyin: "wénjiànguì" },
+{ english: "bookshelf", chinese: "书架", pinyin: "shūjià" },
+{ english: "pen holder", chinese: "笔筒", pinyin: "bǐtǒng" },
+{ english: "pencil sharpener", chinese: "卷笔刀", pinyin: "juǎnbǐdāo" },
+{ english: "stapler", chinese: "订书机", pinyin: "dìngshūjī" },
+{ english: "staples", chinese: "订书钉", pinyin: "dìngshūdīng" },
+{ english: "paper clip", chinese: "回形针", pinyin: "huíxíngzhēn" },
+{ english: "binder clip", chinese: "长尾夹", pinyin: "chángwěijiā" },
+{ english: "rubber band", chinese: "橡皮筋", pinyin: "xiàngpíjīn" },
+{ english: "letter opener", chinese: "拆信刀", pinyin: "chāixìndāo" },
+{ english: "whiteboard", chinese: "白板", pinyin: "báibǎn" },
+{ english: "blackboard", chinese: "黑板", pinyin: "hēibǎn" },
+{ english: "chalk", chinese: "粉笔", pinyin: "fěnbǐ" },
+{ english: "whiteboard marker", chinese: "白板笔", pinyin: "báibǎnbǐ" },
+{ english: "eraser (for pencils)", chinese: "橡皮擦", pinyin: "xiàngpícā" },
+{ english: "board eraser", chinese: "板擦", pinyin: "bǎncā" },
+{ english: "Post-it note", chinese: "便利贴", pinyin: "biànlìtiē" },
+{ english: "clear tape", chinese: "透明胶带", pinyin: "tòumíng jiāodài" },
+{ english: "correction tape", chinese: "修正带", pinyin: "xiūzhèngdài" },
+{ english: "seal (stamp)", chinese: "图章", pinyin: "túzhāng" },
+{ english: "stamp pad", chinese: "印泥", pinyin: "yìnní" },
+{ english: "ID card", chinese: "身份证", pinyin: "shēnfènzhèng" },
+{ english: "passport", chinese: "护照", pinyin: "hùzhào" },
+{ english: "credit card", chinese: "信用卡", pinyin: "xìnyòngkǎ" },
+{ english: "business card", chinese: "名片", pinyin: "míngpiàn" },
+{ english: "photo album", chinese: "相册", pinyin: "xiàngcè" },
+{ english: "painting brush", chinese: "画笔", pinyin: "huàbǐ" },
+{ english: "paint (pigment)", chinese: "颜料", pinyin: "yánliào" },
+{ english: "palette", chinese: "调色板", pinyin: "tiáosèbǎn" },
+{ english: "easel", chinese: "画架", pinyin: "huàjià" },
+{ english: "glue stick", chinese: "胶棒", pinyin: "jiāobàng" },
+{ english: "hole puncher", chinese: "打孔机", pinyin: "dǎkǒngjī" },
+{ english: "binder (folder)", chinese: "活页夹", pinyin: "huóyèjiā" },
+{ english: "puzzle", chinese: "拼图", pinyin: "pīntú" },
+{ english: "board game", chinese: "棋盘游戏", pinyin: "qípán yóuxì" },
+{ english: "chess", chinese: "国际象棋", pinyin: "guójì xiàngqí" },
+{ english: "checkers", chinese: "跳棋", pinyin: "tiàoqí" },
+{ english: "playing cards", chinese: "扑克牌", pinyin: "pūkèpái" },
+{ english: "guitar", chinese: "吉他", pinyin: "jítā" },
+{ english: "violin", chinese: "小提琴", pinyin: "xiǎotíqín" },
+{ english: "piano", chinese: "钢琴", pinyin: "gāngqín" },
+{ english: "flute", chinese: "长笛", pinyin: "chángdí" },
+{ english: "drum", chinese: "鼓", pinyin: "gǔ" },
+{ english: "trumpet", chinese: "小号", pinyin: "xiǎohào" },
+{ english: "saxophone", chinese: "萨克斯管", pinyin: "sàkèsīguǎn" },
+{ english: "clarinet", chinese: "单簧管", pinyin: "dānhuángguǎn" },
+{ english: "amplifier", chinese: "功放", pinyin: "gōngfàng" },
+{ english: "Bluetooth earpiece", chinese: "蓝牙耳机", pinyin: "lányá ěrjī" },
+{ english: "record player", chinese: "唱片机", pinyin: "chàngpiànjī" },
+{ english: "vinyl record", chinese: "黑胶唱片", pinyin: "hēijiāo chàngpiàn" },
+{ english: "CD", chinese: "光盘", pinyin: "guāngpán" },
+{ english: "DVD", chinese: "数字视频光盘", pinyin: "shùzì shìpín guāngpán" },
+{ english: "Blu-ray", chinese: "蓝光光盘", pinyin: "lánguāng guāngpán" },
+{ english: "game controller", chinese: "游戏手柄", pinyin: "yóuxì shǒubǐng" },
+{ english: "console (gaming)", chinese: "游戏机", pinyin: "yóuxìjī" },
+{ english: "headphone stand", chinese: "耳机架", pinyin: "ěrjījià" },
+{ english: "smartphone stand", chinese: "手机支架", pinyin: "shǒujī zhījià" },
+{ english: "wireless charger", chinese: "无线充电器", pinyin: "wúxiàn chōngdiànqì" },
+{ english: "power bank", chinese: "充电宝", pinyin: "chōngdiànbǎo" },
+{ english: "HDMI cable", chinese: "HDMI线", pinyin: "HDMI xiàn" },
+{ english: "router", chinese: "路由器", pinyin: "lùyóuqì" },
+{ english: "modem", chinese: "调制解调器", pinyin: "tiáozhì jiětiáoqì" },
+{ english: "network cable", chinese: "网线", pinyin: "wǎngxiàn" },
+{ english: "WiFi extender", chinese: "WiFi扩展器", pinyin: "WiFi kuòzhǎnqì" },
+{ english: "smartphone", chinese: "智能手机", pinyin: "zhìnéng shǒujī" },
+{ english: "feature phone", chinese: "功能手机", pinyin: "gōngnéng shǒujī" },
+{ english: "phone card", chinese: "电话卡", pinyin: "diànhuà kǎ" },
+{ english: "SIM card", chinese: "SIM卡", pinyin: "SIM kǎ" },
+{ english: "memory card", chinese: "存储卡", pinyin: "cúnchǔkǎ" },
+{ english: "external hard drive", chinese: "移动硬盘", pinyin: "yídòng yìngpán" },
+{ english: "SSD", chinese: "固态硬盘", pinyin: "gùtài yìngpán" },
+{ english: "CPU", chinese: "中央处理器", pinyin: "zhōngyāng chǔlǐqì" },
+{ english: "GPU", chinese: "显示处理器", pinyin: "xiǎnshì chǔlǐqì" },
+{ english: "motherboard", chinese: "主板", pinyin: "zhǔbǎn" },
+{ english: "RAM", chinese: "内存", pinyin: "nèicún" },
+{ english: "power supply", chinese: "电源", pinyin: "diànyuán" },
+{ english: "fan (electric)", chinese: "风扇", pinyin: "fēngshàn" },
+{ english: "air conditioner", chinese: "空调", pinyin: "kōngtiáo" },
+{ english: "heater", chinese: "暖气机", pinyin: "nuǎnqìjī" },
+{ english: "fan heater", chinese: "电风暖器", pinyin: "diànfēng nuǎnqì" },
+{ english: "humidifier", chinese: "加湿器", pinyin: "jiāshīqì" },
+{ english: "dehumidifier", chinese: "除湿机", pinyin: "chúshījī" },
+{ english: "air purifier", chinese: "空气净化器", pinyin: "kōngqì jìnghuàqì" },
+{ english: "water dispenser", chinese: "饮水机", pinyin: "yǐnshuǐjī" },
+{ english: "coffee machine", chinese: "咖啡机", pinyin: "kāfēijī" },
+{ english: "blender", chinese: "搅拌机", pinyin: "jiǎobànjī" },
+{ english: "juicer", chinese: "榨汁机", pinyin: "zhàzhījī" },
+{ english: "rice cooker", chinese: "电饭锅", pinyin: "diànfànguō" },
+{ english: "pressure cooker", chinese: "压力锅", pinyin: "yālìguō" },
+{ english: "slow cooker", chinese: "炖锅", pinyin: "dùnguō" },
+{ english: "air fryer", chinese: "空气炸锅", pinyin: "kōngqì zháguō" },
+{ english: "lunch box", chinese: "便当盒", pinyin: "biàndānghé" },
+{ english: "grocery bag", chinese: "购物袋", pinyin: "gòuwùdài" },
+{ english: "plastic bag", chinese: "塑料袋", pinyin: "sùliàodài" },
+{ english: "suitcase tag", chinese: "行李牌", pinyin: "xínglǐpái" },
+{ english: "travel pillow", chinese: "旅行枕", pinyin: "lǚxíngzhěn" },
+{ english: "umbrella", chinese: "雨伞", pinyin: "yǔsǎn" },
+{ english: "raincoat", chinese: "雨衣", pinyin: "yǔyī" },
+{ english: "helmet", chinese: "头盔", pinyin: "tóukuī" },
+{ english: "bicycle", chinese: "自行车", pinyin: "zìxíngchē" },
+{ english: "motorbike", chinese: "摩托车", pinyin: "mótuōchē" },
+{ english: "car", chinese: "汽车", pinyin: "qìchē" },
+{ english: "bus", chinese: "公交车", pinyin: "gōngjiāochē" },
+{ english: "train", chinese: "火车", pinyin: "huǒchē" },
+{ english: "airplane", chinese: "飞机", pinyin: "fēijī" },
+{ english: "boat", chinese: "船", pinyin: "chuán" },
+{ english: "trolley (cart)", chinese: "手推车", pinyin: "shǒutuīchē" },
+{ english: "step stool", chinese: "小板凳", pinyin: "xiǎo bǎndèng" },
+{ english: "shoe rack", chinese: "鞋架", pinyin: "xiéjià" },
+{ english: "shoes", chinese: "鞋子", pinyin: "xiézi" },
+{ english: "socks", chinese: "袜子", pinyin: "wàzi" },
+{ english: "trousers/pants", chinese: "裤子", pinyin: "kùzi" },
+{ english: "shirt", chinese: "衬衫", pinyin: "chènshān" },
+{ english: "coat", chinese: "外套", pinyin: "wàitào" },
+{ english: "jacket", chinese: "夹克", pinyin: "jiākè" },
+{ english: "dress", chinese: "连衣裙", pinyin: "liányīqún" },
+{ english: "skirt", chinese: "短裙", pinyin: "duǎnqún" }
+        ];
+
+        let currentIndex = 0;
+        let reversed = false;
+        const savedCards = new Set();
+
+        function updateCard() {
+            const cardFront = document.getElementById('card-front');
+            const cardBack = document.getElementById('card-back');
+            const counter = document.getElementById('counter');
+
+            if (!reversed) {
+                cardFront.textContent = cards[currentIndex].english;
+                cardBack.innerHTML = `${cards[currentIndex].chinese}<br><span style="font-size: 1rem;">${cards[currentIndex].pinyin}</span>`;
+            } else {
+                cardBack.textContent = cards[currentIndex].english;
+                cardFront.innerHTML = `${cards[currentIndex].chinese}<br><span style="font-size: 1rem;">${cards[currentIndex].pinyin}</span>`;
+            }
+
+            counter.textContent = `Word ${currentIndex + 1} of ${cards.length}`;
+        }
+
+        function flipCard() {
+            const card = document.querySelector('.card');
+            card.classList.toggle('flipped');
+        }
+
+        function prevCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCard();
+            }
+        }
+
+        function nextCard() {
+            if (currentIndex < cards.length - 1) {
+                currentIndex++;
+                updateCard();
+            }
+        }
+
+        function reverseCards() {
+            reversed = !reversed;
+            updateCard();
+        }
+
+        function randomCard() {
+            currentIndex = Math.floor(Math.random() * cards.length);
+            updateCard();
+        }
+
+        function saveCard() {
+            const savedCardsGrid = document.getElementById('saved-cards-grid');
+            const currentCard = cards[currentIndex];
+
+            if (savedCards.has(currentCard.english)) {
+                alert("This card is already saved.");
+                return;
+            }
+
+            savedCards.add(currentCard.english);
+
+            const savedCard = document.createElement('div');
+            savedCard.className = 'saved-card';
+            savedCard.innerHTML = `
+                <div class="card-inner">
+                    <div class="saved-card-front">${currentCard.english}</div>
+                    <div class="saved-card-back">${currentCard.chinese}<br><span style="font-size: 1rem;">${currentCard.pinyin}</span></div>
+                </div>
+                <button class="remove-card-button">Remove</button>
+            `;
+
+            savedCard.querySelector('.card-inner').onclick = function () {
+                savedCard.classList.toggle('flipped');
+            };
+
+            savedCard.querySelector('.remove-card-button').onclick = function () {
+                savedCards.delete(currentCard.english);
+                savedCardsGrid.removeChild(savedCard);
+            };
+
+            savedCardsGrid.appendChild(savedCard);
+        }
+
+        updateCard();
+    </script>
+</body>
+</html>
